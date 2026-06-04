@@ -1,0 +1,82 @@
+
+# OS Generated Files
+
+.DS_Store
+Thumbs.db
+desktop.ini
+
+
+# Editor / IDE Files
+
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+
+# Logs & Temporary Files
+
+*.log
+*.tmp
+*.temp
+*.bak
+*.cache
+
+
+# Environment Variables
+
+.env
+.env.*
+
+
+# Python
+
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.sqlite3
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+
+# Node.js
+
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+
+# Java
+
+*.class
+*.jar
+target/
+
+
+# C / C++
+
+*.o
+*.out
+*.exe
+
+
+# Archives
+
+*.zip
+*.tar
+*.gz
+*.rar
+
+
+# Misc
+
+coverage/
+.cache/
