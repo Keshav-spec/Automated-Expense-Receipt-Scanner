@@ -21,7 +21,12 @@ from backend.database import get_db
 from backend import models
 
 
-SECRET_KEY = "keshav_expense_scanner_super_secret_2026_secure_key"
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 ALGORITHM = "HS256"
 

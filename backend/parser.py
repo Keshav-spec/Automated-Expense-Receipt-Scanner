@@ -1,124 +1,124 @@
 import re
+
 from typing import Optional
 from datetime import datetime
+
 from dateutil import parser as date_parser
+
 from backend.classifier import classify_expense
 
 
-def clean_text(text: str) -> str:
-    """
-    Clean OCR noise from extracted text.
-    """
-
-    # Replace common OCR mistakes
-    replacements = {
-        "O": "0",
-        "l": "1",
-        "|": "1",
-    }
-
-    cleaned = text
-
-    for old, new in replacements.items():
-        cleaned = cleaned.replace(old, new)
-
-    return cleaned
-
-
+# AMOUNT EXTRACTION
 
 def extract_amount(text: str) -> Optional[float]:
     """
-    Extract total amount from receipt text intelligently.
+    Extract receipt total amount.
     """
 
     text_lower = text.lower()
 
-    # STEP 1:
-    # Try finding proper decimal amounts first
+    # High confidence patterns
+    total_patterns = [
+
+        r'grand\s*total[^\d]*(\d{1,6}\.\d{2})',
+
+        r'net\s*amount[^\d]*(\d{1,6}\.\d{2})',
+
+        r'total\s*amount[^\d]*(\d{1,6}\.\d{2})',
+
+        r'total[^\d]*(\d{1,6}\.\d{2})',
+
+        r'rs\.?\s*(\d{1,6}\.\d{2})',
+
+        r'₹\s*(\d{1,6}\.\d{2})'
+    ]
+
+    for pattern in total_patterns:
+
+        matches = re.findall(
+            pattern,
+            text_lower,
+            re.IGNORECASE
+        )
+
+        for match in matches:
+
+            try:
+
+                value = float(match)
+
+                if 1 <= value <= 100000:
+
+                    return value
+
+            except:
+                continue
+
+    # Generic decimal numbers
+
     decimal_matches = re.findall(
         r'\b\d{1,6}\.\d{2}\b',
         text
     )
 
-    decimal_amounts = []
+    valid_amounts = []
 
-    for amt in decimal_matches:
+    for amount in decimal_matches:
 
         try:
-            value = float(amt)
 
-            # Reasonable receipt range
+            value = float(amount)
+
             if 1 <= value <= 100000:
-                decimal_amounts.append(value)
+
+                valid_amounts.append(value)
 
         except:
             continue
 
-    # Prefer totals near "total"
-    total_pattern = r'total[^\d]{0,20}(\d{1,6}\.\d{2})'
+    if valid_amounts:
 
-    total_matches = re.findall(
-        total_pattern,
-        text_lower
-    )
+        return max(valid_amounts)
 
-    total_amounts = []
+    # OCR-repaired amounts
+    repaired_candidates = []
 
-    for amt in total_matches:
-
-        try:
-            value = float(amt)
-
-            if 1 <= value <= 100000:
-                total_amounts.append(value)
-
-        except:
-            continue
-
-    # Best case:
-    if total_amounts:
-        return max(total_amounts)
-
-    # Otherwise largest decimal
-    if decimal_amounts:
-        return max(decimal_amounts)
-
-    # STEP 2:
-    # Fallback OCR repair logic
-    broken_numbers = re.findall(
-        r'\b\d{4,6}\b',
-        text
-    )
-
-    repaired_amounts = []
-
-    for num in broken_numbers:
+    for num in re.findall(r'\b\d{4,6}\b', text):
 
         try:
 
-            # Example:
-            # 84280 -> 84.80
-            repaired = float(num[:-2] + "." + num[-2:])
+            value = int(num)
+
+            # Skip years
+            if 1900 <= value <= 2100:
+                continue
+
+            repaired = float(
+                num[:-2] + "." + num[-2:]
+            )
 
             if 1 <= repaired <= 100000:
-                repaired_amounts.append(repaired)
+
+                repaired_candidates.append(
+                    repaired
+                )
 
         except:
             continue
 
-    if repaired_amounts:
-        return max(repaired_amounts)
+    if repaired_candidates:
+
+        return max(repaired_candidates)
 
     return None
 
 
+# DATE EXTRACTION
 
 def extract_date(text: str) -> Optional[str]:
     """
     Extract receipt date.
     """
-
-    text_lower = text.lower()
 
     patterns = [
 
@@ -136,110 +136,167 @@ def extract_date(text: str) -> Optional[str]:
 
         matches = re.findall(
             pattern,
-            text_lower,
+            text,
             re.IGNORECASE
         )
 
         for match in matches:
 
             try:
+
                 parsed_date = date_parser.parse(
                     match,
-                    fuzzy=True
+                    dayfirst=True
                 )
 
-                return parsed_date.strftime('%Y-%m-%d')
+                return parsed_date.strftime(
+                    "%Y-%m-%d"
+                )
 
-            except:
+            except Exception:
                 continue
 
-    return datetime.today().strftime('%Y-%m-%d')
+    return datetime.today().strftime(
+        "%Y-%m-%d"
+    )
 
 
+# MERCHANT EXTRACTION
 
 def extract_merchant(text: str) -> str:
     """
-    Extract merchant/store name more intelligently.
+    Extract merchant/store name.
     """
 
     lines = [
+
         line.strip()
-        for line in text.split('\n')
+
+        for line in text.split("\n")
+
         if line.strip()
     ]
 
-    header_lines = lines[:5]
-
     blacklist = [
+
         "receipt",
         "invoice",
-        "tax",
-        "bill",
         "date",
         "total",
-        "cash",
         "thank",
-        "balance",
-        "sales"
+        "gst",
+        "tax"
     ]
 
     candidates = []
 
-    for line in header_lines:
+    for line in lines[:5]:
 
         lower = line.lower()
 
-        # Skip blacklisted keywords
-        if any(word in lower for word in blacklist):
+        if any(
+            word in lower
+            for word in blacklist
+        ):
             continue
 
-        # Skip very long lines
         if len(line) > 40:
             continue
 
-        # Skip mostly numeric
         digit_ratio = sum(
-            c.isdigit() for c in line
+            c.isdigit()
+            for c in line
         ) / max(len(line), 1)
 
         if digit_ratio > 0.3:
             continue
 
-        # Prefer uppercase/title-style names
-        words = line.split()
-
-        if 1 <= len(words) <= 5:
-            candidates.append(line)
+        candidates.append(line)
 
     if candidates:
 
-        # Pick shortest reasonable candidate
-        return min(candidates, key=len)
+        return min(
+            candidates,
+            key=len
+        )
 
     return "Unknown Merchant"
 
+
+# CONFIDENCE SCORING
+
+def generate_confidence(
+    merchant: str,
+    amount: Optional[float],
+    date: str,
+    raw_text: str
+) -> dict:
+
+    confidence = {}
+
+    confidence["merchant"] = (
+        "high"
+        if merchant != "Unknown Merchant"
+        else "low"
+    )
+
+    confidence["amount"] = (
+        "high"
+        if amount is not None
+        else "low"
+    )
+
+    confidence["date"] = (
+        "high"
+        if re.search(
+            r'\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}',
+            raw_text
+        )
+        else "low"
+    )
+
+    return confidence
+
+
+# MAIN PARSER
+
 def parse_receipt(raw_text: str) -> dict:
-    """
-    Main parser function.
-    """
-    
-    amount = extract_amount(raw_text)
 
-    date = extract_date(raw_text)
+    merchant = extract_merchant(
+        raw_text
+    )
 
-    merchant = extract_merchant(raw_text)
+    amount = extract_amount(
+        raw_text
+    )
+
+    date = extract_date(
+        raw_text
+    )
 
     category = classify_expense(
-    merchant,
-    raw_text
+        merchant,
+        raw_text
     )
-    
+
+    confidence = generate_confidence(
+        merchant,
+        amount,
+        date,
+        raw_text
+    )
+
     return {
+
         "merchant": merchant,
+
         "amount": amount,
+
         "date": date,
+
         "category": category,
+
+        "confidence": confidence,
+
         "raw_text": raw_text
     }
-
-

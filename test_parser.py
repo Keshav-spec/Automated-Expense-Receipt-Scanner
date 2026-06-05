@@ -1,32 +1,33 @@
-from backend.ocr_engine import extract_text
-from backend.parser import parse_receipt
+from backend.parser import (
+extract_amount,
+extract_date,
+extract_merchant
+)
 
-with open("backend/sample.png", "rb") as f:
-
-    image_bytes = f.read()
-
-# OCR extraction
-raw_text = extract_text(image_bytes)
-
-print("\n=== RAW OCR TEXT ===\n")
-print(raw_text)
-
-# Structured parsing
-parsed_data = parse_receipt(raw_text)
-
-print("\n=== PARSED RECEIPT ===\n")
-
-for key, value in parsed_data.items():
-    print(f"{key}: {value}")
+def test_amount_extraction():
 
 
-sample_text = """
-DOMINOS PIZZA
-Total: Rs. 450.00
+text = "Grand Total: Rs. 450.00"
+
+assert extract_amount(text) == 450.00
+
+
+def test_date_extraction():
+
+
+text = "Date: 12/05/2024"
+
+assert extract_date(text) == "2024-05-12"
+
+
+def test_merchant_extraction():
+
+
+text = """
+RELIANCE FRESH
+123 Main Street
+Date: 12/05/2024
 """
 
-from backend.parser import parse_receipt
+assert extract_merchant(text) == "RELIANCE FRESH"
 
-parsed = parse_receipt(sample_text)
-
-print(parsed)
