@@ -29,6 +29,22 @@ SessionLocal = sessionmaker(
 Base = declarative_base()
 
 
+def run_migrations():
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(engine)
+    if "users" not in inspector.get_table_names():
+        return
+
+    columns = {col["name"] for col in inspector.get_columns("users")}
+
+    with engine.begin() as conn:
+        if "google_id" not in columns:
+            conn.execute(
+                text("ALTER TABLE users ADD COLUMN google_id VARCHAR")
+            )
+
+
 def get_db():
     """
     FastAPI database dependency.

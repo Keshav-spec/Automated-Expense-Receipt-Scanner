@@ -1,5 +1,6 @@
 from datetime import timedelta
 import os
+import secrets
 
 from fastapi import (
     FastAPI,
@@ -13,15 +14,22 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from fastapi.security import OAuth2PasswordRequestForm
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
+
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token as google_id_token
 
 from backend.database import (
     engine,
     get_db,
-    Base
+    Base,
+    run_migrations
 )
 
 from backend import models
+
+from backend.schemas import GoogleAuthRequest
 
 from backend.ocr_engine import extract_text
 
@@ -32,12 +40,14 @@ from backend.auth import (
     verify_password,
     create_access_token,
     get_current_user,
-    ACCESS_TOKEN_EXPIRE_MINUTES
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    GOOGLE_CLIENT_ID
 )
 
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
+run_migrations()
 
 # Create uploads folder
 os.makedirs("uploads", exist_ok=True)
@@ -115,9 +125,13 @@ def login(
         models.User.username == form_data.username
     ).first()
 
-    if not user or not verify_password(
-        form_data.password,
-        user.hashed_password
+    if (
+        not user
+        or not user.hashed_password
+        or not verify_password(
+            form_data.password,
+            user.hashed_password
+        )
     ):
 
         raise HTTPException(
@@ -135,6 +149,97 @@ def login(
     return {
         "access_token": token,
         "token_type": "bearer"
+    }
+
+
+@app.post("/auth/google")
+def google_login(
+    body: GoogleAuthRequest,
+    db: Session = Depends(get_db)
+):
+
+    if not GOOGLE_CLIENT_ID:
+
+        raise HTTPException(
+            status_code=500,
+            detail="Google login is not configured on the server"
+        )
+
+    try:
+
+        idinfo = google_id_token.verify_oauth2_token(
+            body.id_token,
+            google_requests.Request(),
+            GOOGLE_CLIENT_ID
+        )
+
+    except ValueError:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid Google token"
+        )
+
+    email = idinfo.get("email")
+
+    if not email:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Google account must have an email address"
+        )
+
+    google_sub = idinfo.get("sub")
+
+    user = db.query(models.User).filter(
+        or_(
+            models.User.google_id == google_sub,
+            models.User.email == email
+        )
+    ).first()
+
+    if not user:
+
+        username = email.split("@")[0]
+        base_username = username
+        suffix = 1
+
+        while db.query(models.User).filter(
+            models.User.username == username
+        ).first():
+
+            username = f"{base_username}{suffix}"
+            suffix += 1
+
+        user = models.User(
+            username=username,
+            email=email,
+            google_id=google_sub,
+            hashed_password=hash_password(
+                secrets.token_urlsafe(32)
+            )
+        )
+
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    elif not user.google_id:
+
+        user.google_id = google_sub
+        db.commit()
+
+    token = create_access_token(
+        data={"sub": user.username},
+        expires_delta=timedelta(
+            minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+        )
+    )
+
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "username": user.username
     }
 
 
@@ -308,6 +413,13 @@ def delete_receipt(
             status_code=404,
             detail="Expense not found"
         )
+
+    if expense.image_path and os.path.exists(expense.image_path):
+
+        try:
+            os.remove(expense.image_path)
+        except OSError:
+            pass
 
     db.delete(expense)
 

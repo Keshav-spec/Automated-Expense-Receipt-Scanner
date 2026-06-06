@@ -86,7 +86,15 @@ class User(Base):
     )
 
     hashed_password = Column(
-        String
+        String,
+        nullable=True
+    )
+
+    google_id = Column(
+        String,
+        unique=True,
+        nullable=True,
+        index=True
     )
 
     created_at = Column(

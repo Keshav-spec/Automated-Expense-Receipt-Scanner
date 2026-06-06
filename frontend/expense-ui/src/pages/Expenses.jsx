@@ -8,6 +8,7 @@ import {
   Download,
   Filter,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 import Header from "../components/Header";
 import Badge from "../components/Badge";
@@ -28,20 +29,43 @@ function Expenses() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All Categories");
   const [page, setPage] = useState(1);
+  const [deletingId, setDeletingId] = useState(null);
+
+  const fetchExpenses = async () => {
+    try {
+      const res = await API.get("/receipts/");
+      setExpenses(res.data);
+    } catch {
+      setExpenses([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchExpenses = async () => {
-      try {
-        const res = await API.get("/receipts/");
-        setExpenses(res.data);
-      } catch {
-        setExpenses([]);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchExpenses();
   }, []);
+
+  const handleDelete = async (expense) => {
+    const confirmed = window.confirm(
+      `Delete expense from ${expense.merchant} (${formatCurrency(expense.amount)})?`
+    );
+
+    if (!confirmed) return;
+
+    setDeletingId(expense.id);
+
+    try {
+      await API.delete(`/receipts/${expense.id}`);
+      setExpenses((prev) => prev.filter((e) => e.id !== expense.id));
+    } catch (err) {
+      window.alert(
+        err?.response?.data?.detail || "Failed to delete expense."
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const categories = useMemo(() => {
     const cats = new Set(expenses.map((e) => e.category).filter(Boolean));
@@ -134,23 +158,29 @@ function Expenses() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[#E8E2D8] bg-[#FAFAF8]">
-                {["ID", "DATE", "MERCHANT", "CATEGORY", "AMOUNT", "STATUS"].map(
-                  (col) => (
-                    <th
-                      key={col}
-                      className="text-left px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[#8B8B8B]"
-                    >
-                      {col}
-                    </th>
-                  )
-                )}
+                {[
+                  "ID",
+                  "DATE",
+                  "MERCHANT",
+                  "CATEGORY",
+                  "AMOUNT",
+                  "STATUS",
+                  "ACTIONS",
+                ].map((col) => (
+                  <th
+                    key={col}
+                    className="text-left px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[#8B8B8B]"
+                  >
+                    {col}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {paginated.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     className="px-6 py-12 text-center text-[#8B8B8B]"
                   >
                     No expenses found. Upload a receipt to get started.
@@ -182,6 +212,17 @@ function Expenses() {
                         label={getExpenseStatus(expense)}
                         variant="status"
                       />
+                    </td>
+                    <td className="px-6 py-4">
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(expense)}
+                        disabled={deletingId === expense.id}
+                        title="Delete expense"
+                        className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-[#E8E2D8] text-[#C45C4A] hover:bg-red-50 hover:border-red-200 transition-colors disabled:opacity-50"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </td>
                   </tr>
                 ))

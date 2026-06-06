@@ -2,6 +2,11 @@ from pydantic import BaseModel
 from typing import Optional
 
 
+class GoogleAuthRequest(BaseModel):
+
+    id_token: str
+
+
 class ReceiptData(BaseModel):
 
     merchant: str

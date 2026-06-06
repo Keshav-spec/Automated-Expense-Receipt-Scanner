@@ -67,23 +67,29 @@ function Dashboard() {
   const [chartMode, setChartMode] = useState("monthly");
   const [loading, setLoading] = useState(true);
 
+  const fetchData = async () => {
+    try {
+      const [expRes, sumRes] = await Promise.all([
+        API.get("/receipts/"),
+        API.get("/analytics/summary"),
+      ]);
+      setExpenses(expRes.data);
+      setSummary(sumRes.data);
+    } catch {
+      setExpenses([]);
+      setSummary(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [expRes, sumRes] = await Promise.all([
-          API.get("/receipts/"),
-          API.get("/analytics/summary"),
-        ]);
-        setExpenses(expRes.data);
-        setSummary(sumRes.data);
-      } catch {
-        setExpenses([]);
-        setSummary(null);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
+
+    const handleRefresh = () => fetchData();
+    window.addEventListener("focus", handleRefresh);
+
+    return () => window.removeEventListener("focus", handleRefresh);
   }, []);
 
   const monthlyData = groupByMonth(expenses);

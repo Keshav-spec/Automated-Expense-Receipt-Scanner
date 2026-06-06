@@ -8,12 +8,15 @@ import UploadReceipt from "./pages/UploadReceipt";
 import Expenses from "./pages/Expenses";
 import Settings from "./pages/Settings";
 
-function App() {
+function App({ googleAuthEnabled = false }) {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="/login" element={<Login />} />
+        <Route
+          path="/login"
+          element={<Login googleAuthEnabled={googleAuthEnabled} />}
+        />
         <Route path="/register" element={<Register />} />
 
         <Route

@@ -1,10 +1,20 @@
 
-import easyocr
 import cv2
 import numpy as np
 
-# Load OCR model once
-reader = easyocr.Reader(['en'], gpu=False)
+_reader = None
+
+
+def get_reader():
+    """Load EasyOCR only when a receipt is scanned (keeps API startup fast)."""
+    global _reader
+
+    if _reader is None:
+        import easyocr
+
+        _reader = easyocr.Reader(["en"], gpu=False)
+
+    return _reader
 
 
 def correct_perspective(img: np.ndarray) -> np.ndarray:
@@ -193,7 +203,7 @@ def extract_text(image_bytes: bytes) -> str:
     processed_img = preprocess_image(image_bytes)
 
     # OCR extraction
-    results = reader.readtext(
+    results = get_reader().readtext(
         processed_img,
         detail=0,
         paragraph=True
@@ -215,7 +225,7 @@ def extract_text_with_details(image_bytes: bytes):
 
     processed_img = preprocess_image(image_bytes)
 
-    results = reader.readtext(
+    results = get_reader().readtext(
         processed_img,
         detail=1,
         paragraph=False
