@@ -1,1 +1,60 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap");
 @import "tailwindcss";
+
+@theme {
+  --font-serif: "Playfair Display", Georgia, serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+  --color-terra-bg: #F7F4EE;
+  --color-terra-sidebar: #F3F0E9;
+  --color-terra-primary: #4E7D5A;
+  --color-terra-primary-dark: #355E3B;
+  --color-terra-border: #E8E2D8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: #2F2F2F;
+  background: var(--color-terra-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-serif {
+  font-family: var(--font-serif);
+}
+
+.font-sans {
+  font-family: var(--font-sans);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #C5BFB5;
+  border-radius: 3px;
+}
+
+/* Recharts tooltip */
+.recharts-default-tooltip {
+  border-radius: 12px !important;
+  border: 1px solid #E8E2D8 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+}
