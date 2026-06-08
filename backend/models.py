@@ -101,3 +101,14 @@ class User(Base):
         DateTime,
         default=datetime.utcnow
     )
+
+class Budget(Base):
+    __tablename__ = "budgets"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    user_id = Column(Integer, nullable=False)
+
+    monthly_budget = Column(Float, default=10000)
+
+    created_at = Column(DateTime, default=datetime.utcnow)

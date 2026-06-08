@@ -455,9 +455,69 @@ def get_summary(
                 by_category.get(e.category, 0)
                 + e.amount
             )
+    budget = db.query(models.Budget).filter(
+    models.Budget.user_id == current_user.id
+        ).first()
+
+    monthly_budget = (
+        budget.monthly_budget
+        if budget
+        else 10000
+    )
 
     return {
-        "total_expenses": total,
-        "expense_count": len(expenses),
-        "by_category": by_category
+    "total_expenses": total,
+    "expense_count": len(expenses),
+    "monthly_budget": monthly_budget,
+    "budget_used_percent":
+        round((total / monthly_budget) * 100,2) if monthly_budget > 0 else 0,"by_category": by_category
+}
+    
+@app.get("/budget")
+def get_budget(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+
+    budget = db.query(models.Budget).filter(
+        models.Budget.user_id == current_user.id
+    ).first()
+
+    if not budget:
+
+        budget = models.Budget(
+            user_id=current_user.id,
+            monthly_budget=10000
+        )
+
+        db.add(budget)
+        db.commit()
+        db.refresh(budget)
+
+    return budget
+@app.put("/budget")
+def update_budget(
+    monthly_budget: float,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+
+    budget = db.query(models.Budget).filter(
+        models.Budget.user_id == current_user.id
+    ).first()
+
+    if not budget:
+
+        budget = models.Budget(
+            user_id=current_user.id
+        )
+
+        db.add(budget)
+
+    budget.monthly_budget = monthly_budget
+
+    db.commit()
+
+    return {
+        "message": "Budget updated"
     }

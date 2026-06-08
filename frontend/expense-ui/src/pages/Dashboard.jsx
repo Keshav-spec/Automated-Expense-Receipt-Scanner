@@ -21,14 +21,27 @@ import {
   groupByMonth,
 } from "../utils/helpers";
 
-function MetricCard({ label, value, trend, trendUp, subtext, barPercent }) {
+function MetricCard({
+  label,
+  value,
+  trend,
+  trendUp,
+  subtext,
+  subtitle,
+  barPercent,
+}) {
   return (
     <div className="bg-white rounded-3xl p-6 border border-[#E8E2D8] shadow-sm">
+
       <p className="text-xs font-semibold uppercase tracking-wider text-[#8B8B8B] mb-2">
         {label}
       </p>
+
       <div className="flex items-end justify-between gap-2">
-        <p className="font-serif text-3xl font-bold text-[#355E3B]">{value}</p>
+        <p className="font-serif text-3xl font-bold text-[#355E3B]">
+          {value}
+        </p>
+
         {trend && (
           <span
             className={`flex items-center gap-0.5 text-xs font-semibold px-2 py-1 rounded-full ${
@@ -46,16 +59,35 @@ function MetricCard({ label, value, trend, trendUp, subtext, barPercent }) {
           </span>
         )}
       </div>
-      {subtext && (
-        <p className="text-xs text-[#8B8B8B] mt-2">{subtext}</p>
+
+      {subtitle && (
+        <p className="text-sm font-medium text-[#4E7D5A] mt-2">
+          {subtitle}
+        </p>
       )}
+
+      {subtext && (
+        <p className="text-xs text-[#8B8B8B] mt-2">
+          {subtext}
+        </p>
+      )}
+
       {barPercent != null && (
-        <div className="mt-4 h-1.5 bg-[#F3F0E9] rounded-full overflow-hidden">
-          <div
-            className="h-full bg-[#4E7D5A] rounded-full transition-all"
-            style={{ width: `${Math.min(barPercent, 100)}%` }}
-          />
-        </div>
+        <>
+          <div className="mt-4 h-1.5 bg-[#F3F0E9] rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[#4E7D5A] rounded-full transition-all"
+              style={{
+                width: `${Math.min(barPercent, 100)}%`,
+              }}
+            />
+          </div>
+
+          <div className="mt-2 flex justify-between text-xs text-[#8B8B8B]">
+            <span>Budget Usage</span>
+            <span>{barPercent.toFixed(0)}%</span>
+          </div>
+        </>
       )}
     </div>
   );
@@ -123,22 +155,27 @@ function Dashboard() {
         <MetricCard
           label="Total Spend"
           value={formatCurrency(totalSpend)}
-          trend="12%"
-          trendUp
-          barPercent={72}
+          subtitle={`Budget: ${formatCurrency(
+            Number(localStorage.getItem("monthly_budget")) || 10000
+          )}`}
+          barPercent={
+            (
+              totalSpend /
+              (Number(localStorage.getItem("monthly_budget")) || 10000)
+            ) * 100
+          }
         />
         <MetricCard
           label="Receipt Count"
           value={String(count)}
           subtext="Verified receipts"
-          barPercent={count > 0 ? 85 : 0}
+          
         />
         <MetricCard
           label="Average Spend"
           value={formatCurrency(avgSpend)}
-          trend="4%"
-          trendUp={false}
-          subtext="Target: ₹75.00"
+          
+          
         />
       </div>
 
@@ -152,7 +189,7 @@ function Dashboard() {
               <p className="text-sm text-[#8B8B8B]">Last 6 months comparison</p>
             </div>
             <div className="flex bg-[#F3F0E9] rounded-full p-1">
-              {["quarterly", "monthly"].map((mode) => (
+              {["monthly"].map((mode) => (
                 <button
                   key={mode}
                   type="button"

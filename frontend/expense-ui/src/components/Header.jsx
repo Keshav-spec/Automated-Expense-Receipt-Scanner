@@ -31,18 +31,7 @@ function Header({ title, subtitle, badge, searchPlaceholder = "Search..." }) {
             className="pl-10 pr-4 py-2.5 w-56 bg-white border border-[#E8E2D8] rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-[#4E7D5A]/30"
           />
         </div>
-        <button
-          type="button"
-          className="w-10 h-10 rounded-full bg-white border border-[#E8E2D8] flex items-center justify-center text-[#6B6B6B] hover:bg-[#F3F0E9] transition-colors"
-        >
-          <Bell size={18} />
-        </button>
-        <button
-          type="button"
-          className="w-10 h-10 rounded-full bg-white border border-[#E8E2D8] flex items-center justify-center text-[#6B6B6B] hover:bg-[#F3F0E9] transition-colors"
-        >
-          <HelpCircle size={18} />
-        </button>
+        
       </div>
     </header>
   );
